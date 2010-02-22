@@ -40,15 +40,16 @@ getReply r@(Server h) = do
     prefix <- liftIO $ hGetChar h
     getReplyType r prefix
 
-singleLineReply :: (MonadIO m, MonadFailure RedisError m) => Server -> m RedisValue
-singleLineReply (Server h) = do
-    l <- liftIO $ TIO.hGetLine h
-    return $ RedisString l
-
-integerReply :: (MonadIO m, MonadFailure RedisError m) => Server -> m RedisValue
-integerReply (Server h) = do
-    l <- liftIO $ TIO.hGetLine h
-    return $ RedisInteger (convertUnsafe l::Int)
+getReplyType :: (MonadIO m, MonadFailure RedisError m) 
+             => Server -> Char -> m RedisValue
+getReplyType r prefix =
+    case prefix of
+        '$' -> bulkReply r
+        ':' -> integerReply r
+        '+' -> singleLineReply r
+        '-' -> singleLineReply r >>= \(RedisString m) -> failure $ ServerError m
+        '*' -> multiBulkReply r
+        _ -> singleLineReply r
 
 bulkReply :: (MonadIO m, MonadFailure RedisError m) => Server -> m RedisValue
 bulkReply r@(Server h) = do
@@ -60,6 +61,16 @@ bulkReply r@(Server h) = do
             v <- takeChar bytes r
             _ <- liftIO $ TIO.hGetLine h -- cleans up
             return $ RedisString v
+
+integerReply :: (MonadIO m, MonadFailure RedisError m) => Server -> m RedisValue
+integerReply (Server h) = do
+    l <- liftIO $ TIO.hGetLine h
+    return $ RedisInteger (convertUnsafe l::Int)
+
+singleLineReply :: (MonadIO m, MonadFailure RedisError m) => Server -> m RedisValue
+singleLineReply (Server h) = do
+    l <- liftIO $ TIO.hGetLine h
+    return $ RedisString l
 
 multiBulkReply :: (MonadIO m, MonadFailure RedisError m) => Server -> m RedisValue
 multiBulkReply r@(Server h) = do
@@ -74,17 +85,6 @@ multiBulkReply' r@(Server h) n values = do
     _ <- liftIO $ hGetChar h -- discard the type data since we know it's a bulk string
     v <- bulkReply r
     multiBulkReply' r (n - 1) (values ++ [v])
-
-getReplyType :: (MonadIO m, MonadFailure RedisError m) 
-             => Server -> Char -> m RedisValue
-getReplyType r prefix =
-    case prefix of
-        '$' -> bulkReply r
-        ':' -> integerReply r
-        '+' -> singleLineReply r
-        '-' -> singleLineReply r >>= \(RedisString m) -> failure $ ServerError m
-        '*' -> multiBulkReply r
-        _ -> singleLineReply r
 
 takeChar :: (MonadIO m, MonadFailure RedisError m) 
          => Int -> Server -> m (T.Text)
