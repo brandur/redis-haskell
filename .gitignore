@@ -1,0 +1,6 @@
+.hg/
+.hgignore
+dist/
+*.hi
+*.o
+*.prof
