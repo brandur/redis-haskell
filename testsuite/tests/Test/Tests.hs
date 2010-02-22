@@ -19,7 +19,7 @@ tests = TestList [ commandTests ]
 main :: IO ()
 main = do
     putFancyStr "Running redis-haskell test suite ..."
-    Counts { failures = f } <- runTestTT tests
-    if f < 1 then putFancyStr "Test suite successful!" >> exitSuccess
-             else putFancyStr "Test suite FAILED!"     >> exitFailure
+    Counts { errors = e, failures = f } <- runTestTT tests
+    if f < 1 && e < 1 then putFancyStr "Test suite successful!" >> exitSuccess
+                      else putFancyStr "Test suite FAILED!"     >> exitFailure
 
