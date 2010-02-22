@@ -50,8 +50,7 @@ data RedisValue = RedisString T.Text
 -- Failure
 -- 
 
-data RedisError = ReplyError T.Text
-                | ServerError T.Text
+data RedisError = ServerError T.Text
                   deriving (Show, Typeable)
 
 instance Exception RedisError

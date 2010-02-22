@@ -6,7 +6,6 @@ import Control.Monad.Trans        ( MonadIO, liftIO )
 import Control.Failure            ( MonadFailure, failure )
 import Data.Convertible.Base      ( convertUnsafe )
 import Data.Convertible.Instances ( )
-import Data.List                  ( intersperse )
 import Database.Redis.Core
 import System.IO                  ( hGetChar )
 import qualified Data.Text as T
@@ -17,18 +16,7 @@ import qualified Data.Text.IO as TIO
 -- 
 
 command :: (MonadIO m, MonadFailure RedisError m) => Server -> m a -> m RedisValue
-command r f = do f >> getReply r
-
-inline :: (MonadIO m, MonadFailure RedisError m) 
-       => Server -> T.Text -> [T.Text] -> m ()
-inline (Server h) command' args = liftIO $ TIO.hPutStrLn h $ T.concat $ intersperse " " ([command'] ++ args)
-
--- @todo: Try to get rid of this, multibulk can be used for anything
-bulk :: (MonadIO m, MonadFailure RedisError m) 
-     => Server -> T.Text -> [T.Text] -> T.Text -> m ()
-bulk r@(Server h) command' args value = do
-    inline r command' (args ++ [toParam $ T.length value])
-    liftIO $ TIO.hPutStrLn h value
+command r f = f >> getReply r
 
 multiBulk :: (MonadIO m, MonadFailure RedisError m) 
            => Server -> T.Text -> [T.Text] -> m ()
@@ -124,5 +112,5 @@ boolify v' = do
                        _                -> False
 
 discard :: (Monad a) => a b -> a ()
-discard f = do f >> return ()
+discard f = f >> return ()
 
